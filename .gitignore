@@ -1,0 +1,8 @@
+.env
+*.log
+target/
+.idea/
+*.iml
+frontend/node_modules/
+frontend/dist/
+.DS_Store

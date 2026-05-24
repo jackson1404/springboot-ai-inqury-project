@@ -1,0 +1,49 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: spring-ai-openrouter-demo
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:spring_ai_demo}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: ${APP_DB_DDL_AUTO:update}
+    show-sql: ${APP_DB_SHOW_SQL:true}
+    properties:
+      hibernate:
+        format_sql: true
+
+  ai:
+    openai:
+      api-key: ${OPENROUTER_API_KEY}
+      base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api}
+      chat:
+        options:
+          model: ${OPENROUTER_MODEL:openrouter/free}
+          temperature: ${AI_TEMPERATURE:0.2}
+          max-tokens: ${AI_MAX_TOKENS:900}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+app:
+  ai:
+    max-history-turns: ${APP_AI_MAX_HISTORY_TURNS:8}
+  seed:
+    enabled: ${APP_DB_SEED_ENABLED:true}
+  security:
+    jwt:
+      # Use a long random secret in production. Minimum 32 characters.
+      secret: ${JWT_SECRET:dev-only-change-this-secret-key-please-1234567890}
+      expiration-minutes: ${JWT_EXPIRATION_MINUTES:120}
+    cors:
+      allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
