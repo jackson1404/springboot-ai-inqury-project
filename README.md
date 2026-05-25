@@ -1,151 +1,97 @@
-# Spring AI OpenRouter Demo — Security + JPA + React
+# Spring AI OpenRouter Demo - Secure Full Stack with Chat Memory + Advisors
 
-This project is a scalable learning backend/frontend sample using:
+This project is a production-style learning project for:
 
 - Spring Boot 3.5.x
-- Spring AI with OpenRouter through OpenAI-compatible API config
+- Spring Security + JWT
 - PostgreSQL + Spring Data JPA
-- Spring Security + JWT authentication
-- BCrypt password hashing
-- Protected REST endpoints
-- PostgreSQL-backed AI tools
-- React + Vite frontend in JavaScript
+- Spring AI + OpenRouter
+- Spring AI `MessageChatMemoryAdvisor`
+- Spring AI JDBC chat memory repository
+- App-owned persistent chat history for the UI
+- React + Vite frontend
 
-## Architecture
+## What changed in this version
 
-```text
-frontend React/Vite
-    ↓ Authorization: Bearer JWT
-Spring Boot controllers
-    ↓
-Spring Security JWT filter
-    ↓
-Services
-    ↓
-JPA repositories / Spring AI ChatClient
-    ↓
-PostgreSQL / OpenRouter
+This version adds two memory layers:
+
+1. **Spring AI Chat Memory**
+   - Uses `MessageChatMemoryAdvisor`.
+   - Uses `ChatMemory.CONVERSATION_ID` on every chat request.
+   - Uses JDBC-backed memory through `spring-ai-starter-model-chat-memory-repository-jdbc`.
+   - Stores the short memory window used by the model in `SPRING_AI_CHAT_MEMORY`.
+
+2. **Application Chat History**
+   - Uses your own JPA entities: `ChatConversationEntity` and `ChatMessageEntity`.
+   - Stores full conversation history for the frontend UI.
+   - Supports listing, loading, renaming, and deleting user-owned conversations.
+
+Spring AI memory is for model context. App chat history is for UI, audit, and long-term records.
+
+## Main backend endpoints
+
+Public:
+
+```http
+GET  /api/ping
+POST /api/auth/register
+POST /api/auth/login
+GET  /actuator/health
 ```
 
-## Main backend features
+Protected by JWT:
 
-### Authentication
-
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `GET /api/auth/me`
-
-Register and login return a JWT access token. Protected requests must send:
-
-```text
-Authorization: Bearer <token>
+```http
+POST   /api/chat
+GET    /api/conversations
+GET    /api/conversations/{conversationId}
+PATCH  /api/conversations/{conversationId}
+DELETE /api/conversations/{conversationId}
+GET    /api/data/customers
+GET    /api/data/orders
+GET    /api/data/products
 ```
 
-Seed users are inserted when `APP_DB_SEED_ENABLED=true`:
-
-```text
-jack@example.com / Password123   role ADMIN
-demo@example.com / Password123   role USER
-```
-
-### Protected APIs
-
-These require JWT:
-
-- `POST /api/chat`
-- `GET /api/data/customers`
-- `GET /api/data/orders`
-- `GET /api/data/products`
-- `POST /api/data/customers/search`
-- `POST /api/data/orders/search`
-- `POST /api/data/products/search`
-
-Public APIs:
-
-- `GET /api/ping`
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `GET /actuator/health`
-
-## Backend setup
-
-### 1. Start PostgreSQL
+## Run PostgreSQL
 
 ```bash
 docker compose up -d
 ```
 
-Adminer is available at:
+Adminer runs on:
 
 ```text
 http://localhost:8081
 ```
 
-Adminer login:
+## Backend environment variables
+
+Set these in IntelliJ Run Configuration or your shell:
 
 ```text
-System: PostgreSQL
-Server: postgres
-Username: postgres
-Password: postgres
-Database: spring_ai_demo
+OPENROUTER_API_KEY=your_key
+OPENROUTER_BASE_URL=https://openrouter.ai/api
+OPENROUTER_MODEL=openrouter/free
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=spring_ai_demo
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+APP_DB_SEED_ENABLED=true
+JWT_SECRET=replace-with-a-long-random-secret-at-least-32-characters
+CORS_ALLOWED_ORIGINS=http://localhost:5173
+SPRING_AI_CHAT_MEMORY_SCHEMA=always
+APP_AI_MAX_MEMORY_MESSAGES=20
+APP_AI_MAX_TITLE_LENGTH=80
 ```
 
-### 2. Configure backend env vars
-
-In IntelliJ Run Configuration, set:
-
-```text
-OPENROUTER_API_KEY=your_openrouter_key;OPENROUTER_BASE_URL=https://openrouter.ai/api;OPENROUTER_MODEL=openrouter/free;POSTGRES_HOST=localhost;POSTGRES_PORT=5432;POSTGRES_DB=spring_ai_demo;POSTGRES_USER=postgres;POSTGRES_PASSWORD=postgres;APP_DB_SEED_ENABLED=true;JWT_SECRET=replace-with-a-long-random-secret-at-least-32-characters;CORS_ALLOWED_ORIGINS=http://localhost:5173
-```
-
-### 3. Run backend
+Run backend:
 
 ```bash
 mvn spring-boot:run
 ```
 
-Backend runs at:
-
-```text
-http://localhost:8080
-```
-
-## Backend test commands
-
-### Health check
-
-```bash
-curl http://localhost:8080/api/ping
-```
-
-### Login
-
-```bash
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"jack@example.com","password":"Password123"}'
-```
-
-Copy `accessToken` from the response.
-
-### Protected data API
-
-```bash
-curl http://localhost:8080/api/data/customers \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-### Protected AI chat
-
-```bash
-curl -X POST http://localhost:8080/api/chat \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -d '{"message":"Find orders for customer CUST-1001 and calculate total spend."}'
-```
-
-## Frontend setup
+## Frontend
 
 ```bash
 cd frontend
@@ -153,44 +99,73 @@ npm install
 npm run dev
 ```
 
-Frontend runs at:
+Open:
 
 ```text
 http://localhost:5173
 ```
 
-The frontend supports:
-
-- login/register
-- JWT storage in localStorage for learning/demo purposes
-- protected AI chat
-- protected customer/order/product data explorer
-
-For production, prefer secure HTTP-only cookies or a stronger token strategy depending on your deployment and threat model.
-
-## Important production notes
-
-Do not commit real secrets. Set them through deployment environment variables, Docker secrets, AWS Secrets Manager, Kubernetes Secret, or another secret manager.
-
-For production, use:
+Seed users:
 
 ```text
-APP_DB_DDL_AUTO=validate
-APP_DB_SHOW_SQL=false
-APP_DB_SEED_ENABLED=false
-JWT_SECRET=<strong random secret>
-CORS_ALLOWED_ORIGINS=https://your-real-frontend-domain.com
+jack@example.com / Password123
+
+demo@example.com / Password123
 ```
 
-## Important package purpose
+## How chat memory works
+
+When the user sends a message:
 
 ```text
-entity/       JPA database table mappings
-repository/   Spring Data JPA database query interfaces
-service/      business logic
-controller/   HTTP API layer
-dto/          request/response schemas
-security/     JWT, Spring Security, authentication filter, config
-tool/         AI-callable backend tools backed by PostgreSQL
-frontend/     React Vite UI
+React ChatPanel
+  -> POST /api/chat with JWT
+  -> ChatController
+  -> ChatService
+  -> ChatHistoryService creates or validates conversation ownership
+  -> ChatClient call uses MessageChatMemoryAdvisor
+  -> advisor gets ChatMemory.CONVERSATION_ID
+  -> Spring AI loads prior memory messages from JDBC
+  -> OpenRouter receives current prompt + typed history messages
+  -> Spring AI stores new user/assistant messages in JDBC memory
+  -> ChatHistoryService stores the same visible exchange in app chat history tables
 ```
+
+The important line is in `ChatService`:
+
+```java
+.advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversation.getId()))
+```
+
+Without that parameter, Spring AI memory advisors do not know which conversation to load or update.
+
+## Important classes
+
+```text
+AiChatConfig
+= Creates MessageWindowChatMemory using the JDBC ChatMemoryRepository.
+
+ChatService
+= Uses ChatClient + MessageChatMemoryAdvisor + DatabaseBusinessTools.
+
+ChatHistoryService
+= Owns application conversation records and user ownership checks.
+
+ConversationController
+= REST API for conversation list/load/rename/delete.
+
+ChatConversationEntity
+= JPA table for one chat thread.
+
+ChatMessageEntity
+= JPA table for visible user/assistant messages.
+
+ChatConversationRepository / ChatMessageRepository
+= JPA repositories for persistent chat history.
+```
+
+## Notes
+
+- `.env` files are not included because they may contain secrets.
+- Spring Boot does not automatically load `.env`; use IntelliJ environment variables, shell variables, Docker Compose, or production secrets.
+- The Spring AI JDBC memory table is separate from the app-owned `chat_conversations` and `chat_messages` tables.

@@ -1,6 +1,7 @@
 package com.jack.springaiopenrouter.exception;
 
 import com.jack.springaiopenrouter.dto.ErrorResponse;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -43,6 +44,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({BadCredentialsException.class, AuthenticationCredentialsNotFoundException.class})
     public ResponseEntity<ErrorResponse> handleUnauthorized(Exception ex, HttpServletRequest request) {
         return build(HttpStatus.UNAUTHORIZED, ex.getMessage(), request, List.of());
+    }
+
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFound(EntityNotFoundException ex, HttpServletRequest request) {
+        return build(HttpStatus.NOT_FOUND, ex.getMessage(), request, List.of());
     }
 
     @ExceptionHandler(AccessDeniedException.class)

@@ -110,3 +110,84 @@ th { background: #f8fafc; color: #334155; }
   .topbar, .user-box { align-items: flex-start; flex-direction: column; }
   .user-box div { text-align: left; }
 }
+
+/* Chat memory layout */
+.memory-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 18px;
+}
+.conversation-sidebar {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 18px;
+  padding: 14px;
+  min-height: 480px;
+}
+.sidebar-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.sidebar-title-row h3 { margin: 0; font-size: 16px; }
+.small-icon-btn, .refresh-btn, .delete-conversation {
+  border: 1px solid #e2e8f0;
+  background: white;
+  color: #334155;
+  border-radius: 12px;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.small-icon-btn { width: 36px; }
+.refresh-btn { width: 100%; margin: 12px 0; font-size: 13px; font-weight: 800; }
+.conversation-list { display: grid; gap: 8px; max-height: 410px; overflow: auto; }
+.conversation-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  align-items: stretch;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  overflow: hidden;
+}
+.conversation-item.active { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12); }
+.conversation-item > button:first-child {
+  border: 0;
+  background: transparent;
+  color: #111827;
+  text-align: left;
+  padding: 10px 12px;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.conversation-item strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.conversation-item span { color: #64748b; font-size: 12px; }
+.delete-conversation { border-width: 0 0 0 1px; border-radius: 0; color: #991b1b; }
+.empty-mini { color: #64748b; font-size: 13px; text-align: center; padding: 18px 8px; }
+.chat-main { min-width: 0; }
+.active-chat-label {
+  display: inline-flex;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@media (max-width: 1180px) {
+  .memory-layout { grid-template-columns: 1fr; }
+  .conversation-sidebar { min-height: auto; }
+  .conversation-list { max-height: 220px; }
+}

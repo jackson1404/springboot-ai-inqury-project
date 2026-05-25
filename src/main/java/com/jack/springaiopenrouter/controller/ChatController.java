@@ -4,6 +4,7 @@ import com.jack.springaiopenrouter.dto.ChatRequest;
 import com.jack.springaiopenrouter.dto.ChatResponse;
 import com.jack.springaiopenrouter.service.ChatService;
 import jakarta.validation.Valid;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,7 +21,7 @@ public class ChatController {
     }
 
     @PostMapping
-    public ChatResponse chat(@Valid @RequestBody ChatRequest request) {
-        return chatService.chat(request);
+    public ChatResponse chat(@Valid @RequestBody ChatRequest request, Authentication authentication) {
+        return chatService.chat(request, authentication.getName());
     }
 }

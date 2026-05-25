@@ -8,7 +8,7 @@ spring:
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:spring_ai_demo}
     username: ${POSTGRES_USER:postgres}
-    password: ${POSTGRES_PASSWORD:postgres}
+    password: ${POSTGRES_PASSWORD:root}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -20,6 +20,11 @@ spring:
         format_sql: true
 
   ai:
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: ${SPRING_AI_CHAT_MEMORY_SCHEMA:always}
     openai:
       api-key: ${OPENROUTER_API_KEY}
       base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api}
@@ -38,6 +43,8 @@ management:
 app:
   ai:
     max-history-turns: ${APP_AI_MAX_HISTORY_TURNS:8}
+    max-memory-messages: ${APP_AI_MAX_MEMORY_MESSAGES:20}
+    max-title-length: ${APP_AI_MAX_TITLE_LENGTH:80}
   seed:
     enabled: ${APP_DB_SEED_ENABLED:true}
   security:
