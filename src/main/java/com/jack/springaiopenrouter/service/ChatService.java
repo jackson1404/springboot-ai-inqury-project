@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -23,6 +24,7 @@ public class ChatService {
     private final ChatHistoryService chatHistoryService;
     private final DatabaseBusinessTools databaseBusinessTools;
     private final int streamMinBufferChars;
+    private final int streamMaxWaitMillis;
 
     public ChatService(
             ChatClient.Builder chatClientBuilder,
@@ -37,6 +39,7 @@ public class ChatService {
         this.chatHistoryService = chatHistoryService;
         this.databaseBusinessTools = databaseBusinessTools;
         this.streamMinBufferChars = properties.streamMinBufferChars();
+        this.streamMaxWaitMillis = properties.streamMaxWaitMillis();
     }
 
     public ChatResponse chat(ChatRequest request, String userEmail) {
@@ -106,6 +109,19 @@ public class ChatService {
     private Flux<String> bufferTextChunks(Flux<String> source) {
         return Flux.create(sink -> {
             StringBuilder buffer = new StringBuilder();
+            Object lock = new Object();
+
+            Runnable flushIfNeeded = () -> {
+                synchronized (lock) {
+                    if (!buffer.isEmpty() && !sink.isCancelled()) {
+                        sink.next(buffer.toString());
+                        buffer.setLength(0);
+                    }
+                }
+            };
+
+            Disposable timer = Flux.interval(Duration.ofMillis(streamMaxWaitMillis))
+                    .subscribe(tick -> flushIfNeeded.run());
 
             Disposable subscription = source.subscribe(
                     chunk -> {
@@ -113,23 +129,30 @@ public class ChatService {
                             return;
                         }
 
-                        buffer.append(chunk);
+                        synchronized (lock) {
+                            buffer.append(chunk);
 
-                        if (shouldFlushBuffer(buffer)) {
-                            sink.next(buffer.toString());
-                            buffer.setLength(0);
+                            if (shouldFlushBuffer(buffer) && !sink.isCancelled()) {
+                                sink.next(buffer.toString());
+                                buffer.setLength(0);
+                            }
                         }
                     },
-                    sink::error,
+                    error -> {
+                        timer.dispose();
+                        sink.error(error);
+                    },
                     () -> {
-                        if (!buffer.isEmpty()) {
-                            sink.next(buffer.toString());
-                        }
+                        timer.dispose();
+                        flushIfNeeded.run();
                         sink.complete();
                     }
             );
 
-            sink.onDispose(subscription);
+            sink.onDispose(() -> {
+                timer.dispose();
+                subscription.dispose();
+            });
         });
     }
 

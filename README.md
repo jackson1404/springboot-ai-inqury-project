@@ -236,3 +236,27 @@ Slower typing: 1-2 chars every 20-30ms
 Balanced typing: 3 chars every 18ms
 Faster typing: 4-5 chars every 10-15ms
 ```
+
+
+## Streaming UX tuning
+
+This version uses real backend streaming with medium chunks and frontend typewriter display.
+
+Optional environment variables:
+
+```text
+APP_AI_STREAM_MIN_BUFFER_CHARS=120
+APP_AI_STREAM_MAX_WAIT_MILLIS=400
+```
+
+Meaning:
+
+- `APP_AI_STREAM_MIN_BUFFER_CHARS`: flush a chunk when the backend buffer reaches this many characters.
+- `APP_AI_STREAM_MAX_WAIT_MILLIS`: flush partial text after this delay even if no sentence has ended yet. This reduces the first visible delay and reduces pauses between chunks.
+
+Frontend typewriter speed is in `frontend/src/components/ChatPanel.jsx`:
+
+```javascript
+const TYPEWRITER_CHARS_PER_STEP = 4;
+const TYPEWRITER_DELAY_MS = 14;
+```

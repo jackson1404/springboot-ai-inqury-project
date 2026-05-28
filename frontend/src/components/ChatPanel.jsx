@@ -9,8 +9,8 @@ const starterPrompts = [
   'Find orders for customer CUST-1001 and calculate total spend.',
 ];
 
-const TYPEWRITER_CHARS_PER_STEP = 3;
-const TYPEWRITER_DELAY_MS = 18;
+const TYPEWRITER_CHARS_PER_STEP = 4;
+const TYPEWRITER_DELAY_MS = 14;
 
 export function ChatPanel() {
   const [conversationId, setConversationId] = useState('');

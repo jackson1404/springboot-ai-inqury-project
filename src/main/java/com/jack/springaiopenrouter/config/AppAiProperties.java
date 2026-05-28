@@ -7,7 +7,8 @@ public record AppAiProperties(
         int maxHistoryTurns,
         int maxMemoryMessages,
         int maxTitleLength,
-        int streamMinBufferChars
+        int streamMinBufferChars,
+        int streamMaxWaitMillis
 ) {
     public AppAiProperties {
         if (maxHistoryTurns <= 0) {
@@ -20,7 +21,10 @@ public record AppAiProperties(
             maxTitleLength = 80;
         }
         if (streamMinBufferChars <= 0) {
-            streamMinBufferChars = 160;
+            streamMinBufferChars = 120;
+        }
+        if (streamMaxWaitMillis <= 0) {
+            streamMaxWaitMillis = 400;
         }
     }
 }
