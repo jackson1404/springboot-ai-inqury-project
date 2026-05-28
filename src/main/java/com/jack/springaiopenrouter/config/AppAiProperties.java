@@ -6,7 +6,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record AppAiProperties(
         int maxHistoryTurns,
         int maxMemoryMessages,
-        int maxTitleLength
+        int maxTitleLength,
+        int streamMinBufferChars
 ) {
     public AppAiProperties {
         if (maxHistoryTurns <= 0) {
@@ -17,6 +18,9 @@ public record AppAiProperties(
         }
         if (maxTitleLength <= 0) {
             maxTitleLength = 80;
+        }
+        if (streamMinBufferChars <= 0) {
+            streamMinBufferChars = 160;
         }
     }
 }

@@ -191,3 +191,16 @@ th { background: #f8fafc; color: #334155; }
   .conversation-sidebar { min-height: auto; }
   .conversation-list { max-height: 220px; }
 }
+
+
+.stop-btn {
+  background: #dc2626;
+}
+
+.chat-input-row input:disabled,
+.chat-input-row button:disabled,
+.prompt-row button:disabled,
+.conversation-item button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

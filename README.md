@@ -43,6 +43,7 @@ Protected by JWT:
 
 ```http
 POST   /api/chat
+POST   /api/chat/stream
 GET    /api/conversations
 GET    /api/conversations/{conversationId}
 PATCH  /api/conversations/{conversationId}
@@ -169,3 +170,69 @@ ChatConversationRepository / ChatMessageRepository
 - `.env` files are not included because they may contain secrets.
 - Spring Boot does not automatically load `.env`; use IntelliJ environment variables, shell variables, Docker Compose, or production secrets.
 - The Spring AI JDBC memory table is separate from the app-owned `chat_conversations` and `chat_messages` tables.
+
+## Streaming chat reliability update
+
+This version includes a safer streaming implementation for `POST /api/chat/stream`.
+
+### What changed
+
+- Adds `spring-boot-starter-webflux` so the backend can return `Flux<StreamChatEvent>`.
+- Streams newline-delimited JSON (`application/x-ndjson`) events.
+- Buffers tiny provider token chunks and flushes when a sentence ends or the buffer reaches `APP_AI_STREAM_MIN_BUFFER_CHARS` characters.
+- Default stream buffer threshold is `160`, which is in the recommended 120-180 range.
+- Permits `/error` and `ERROR` / `ASYNC` / `FORWARD` dispatcher types in Spring Security so streaming errors do not cause `AccessDeniedException` after the response is already committed.
+- Adds `response.isCommitted()` protection in `RestAuthenticationEntryPoint`.
+- Frontend now uses `fetch()` streaming and handles interrupted streams gracefully.
+
+### Optional streaming environment variable
+
+```bash
+APP_AI_STREAM_MIN_BUFFER_CHARS=160
+```
+
+Lower values stream faster but produce more frontend updates. Higher values reduce frontend updates but feel less realtime.
+
+### Test streaming with curl
+
+```bash
+curl -N -X POST http://localhost:8080/api/chat/stream \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/x-ndjson" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{"message":"Explain Spring AI streaming simply"}'
+```
+
+## Frontend typewriter rendering update
+
+This version uses the recommended real-world streaming UI design:
+
+```text
+Backend: real streaming + medium chunks
+Frontend: typewriter display
+```
+
+Backend still streams real data from the model and flushes medium-sized chunks when a sentence ends or the buffer reaches `APP_AI_STREAM_MIN_BUFFER_CHARS`.
+
+The frontend no longer appends a whole backend chunk immediately. Instead, `ChatPanel.jsx` queues each incoming `token` event and reveals it gradually with:
+
+```text
+TYPEWRITER_CHARS_PER_STEP = 3
+TYPEWRITER_DELAY_MS = 18
+```
+
+So the backend remains efficient, while the UI feels like a real typing stream.
+
+To tune the visual speed, edit these constants in:
+
+```text
+frontend/src/components/ChatPanel.jsx
+```
+
+Recommended values:
+
+```text
+Slower typing: 1-2 chars every 20-30ms
+Balanced typing: 3 chars every 18ms
+Faster typing: 4-5 chars every 10-15ms
+```

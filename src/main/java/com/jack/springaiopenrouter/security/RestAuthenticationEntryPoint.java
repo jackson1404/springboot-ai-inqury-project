@@ -26,6 +26,10 @@ public class RestAuthenticationEntryPoint implements org.springframework.securit
             HttpServletResponse response,
             org.springframework.security.core.AuthenticationException authException
     ) throws IOException {
+        if (response.isCommitted()) {
+            return;
+        }
+
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
         response.setContentType("application/json");
         objectMapper.writeValue(response.getOutputStream(), new ErrorResponse(

@@ -45,6 +45,9 @@ app:
     max-history-turns: ${APP_AI_MAX_HISTORY_TURNS:8}
     max-memory-messages: ${APP_AI_MAX_MEMORY_MESSAGES:20}
     max-title-length: ${APP_AI_MAX_TITLE_LENGTH:80}
+    # Streaming chunks are flushed when a sentence ends or this character threshold is reached.
+    # 120-180 is a good range; default 160 keeps streaming smooth without too many tiny frontend updates.
+    stream-min-buffer-chars: ${APP_AI_STREAM_MIN_BUFFER_CHARS:160}
   seed:
     enabled: ${APP_DB_SEED_ENABLED:true}
   security:
