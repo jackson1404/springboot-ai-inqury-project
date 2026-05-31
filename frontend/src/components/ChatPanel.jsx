@@ -185,7 +185,7 @@ export function ChatPanel() {
         return;
       }
 
-      const nextPiece = currentChunk.slice(0, TYPEWRITER_CHARS_PER_STEP);
+      const nextPiece = currentChunk.slice(0, TYPEWRITER_CHARS_PER_STEP); // 4 char per step
       typingQueueRef.current[0] = currentChunk.slice(TYPEWRITER_CHARS_PER_STEP);
 
       setMessages((current) => {

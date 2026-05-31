@@ -62,6 +62,19 @@ public class ChatService {
         return new ChatResponse(conversation.getId(), answer, Instant.now());
     }
 
+    private boolean shouldUseBusinessTools(String message) {
+        String text = message == null ? "" : message.toLowerCase();
+
+        return text.contains("customer")
+                || text.contains("order")
+                || text.contains("product")
+                || text.contains("stock")
+                || text.contains("price")
+                || text.contains("spend")
+                || text.contains("cust-")
+                || text.contains("ord-");
+    }
+
     public Flux<StreamChatEvent> streamChat(ChatRequest request, String userEmail) {
         ChatConversationEntity conversation = chatHistoryService.resolveConversation(
                 request.conversationId(),
@@ -73,14 +86,24 @@ public class ChatService {
 
         Flux<StreamChatEvent> startEvent = Flux.just(StreamChatEvent.conversation(conversation.getId()));
 
-        Flux<String> rawChunks = chatClient
+        var prompt = chatClient
                 .prompt()
                 .system(buildSystemPrompt())
                 .user(request.message())
-                .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversation.getId()))
-                .tools(databaseBusinessTools)
-                .stream()
-                .content();
+                .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversation.getId()));
+
+        Flux<String> rawChunks;
+
+        if (shouldUseBusinessTools(request.message())) {
+            rawChunks = prompt
+                    .tools(databaseBusinessTools)
+                    .stream()
+                    .content();
+        } else {
+            rawChunks = prompt
+                    .stream()
+                    .content();
+        }
 
         Flux<StreamChatEvent> tokenEvents = bufferTextChunks(rawChunks)
                 .map(chunk -> {
@@ -111,6 +134,7 @@ public class ChatService {
             StringBuilder buffer = new StringBuilder();
             Object lock = new Object();
 
+            // flush = send buffered text to frontend and empty the buffer
             Runnable flushIfNeeded = () -> {
                 synchronized (lock) {
                     if (!buffer.isEmpty() && !sink.isCancelled()) {
