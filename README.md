@@ -260,3 +260,133 @@ Frontend typewriter speed is in `frontend/src/components/ChatPanel.jsx`:
 const TYPEWRITER_CHARS_PER_STEP = 4;
 const TYPEWRITER_DELAY_MS = 14;
 ```
+
+---
+
+## Structured-output intent routing layer
+
+This version adds a Spring AI structured-output routing layer without removing the existing streaming, JWT, frontend, PostgreSQL, chat memory, advisor, and typewriter flows.
+
+### Why this layer exists
+
+The chat service no longer blindly attaches business database tools to every request. Instead, it first creates a route decision:
+
+```text
+User message
+  -> ChatService
+  -> ChatRoutePolicy
+  -> RuleBasedIntentDetector
+  -> if rule is confident, use rule route
+  -> if unclear and enabled, AiIntentDetectionService uses Spring AI structured output
+  -> ChatRouteDecision
+  -> ChatService chooses normal chat or tool-enabled chat
+```
+
+This improves maintainability because `ChatService` does orchestration, while routing logic is isolated in `ai/intent`.
+
+### New package
+
+```text
+src/main/java/com/jack/springaiopenrouter/ai/intent/
+  ChatIntent.java
+  IntentSource.java
+  IntentResult.java
+  ChatRouteDecision.java
+  RuleBasedIntentDetector.java
+  AiIntentDetectionService.java
+  ChatRoutePolicy.java
+```
+
+### New API
+
+```text
+POST /api/intent/detect
+```
+
+Example:
+
+```bash
+curl -X POST http://localhost:8080/api/intent/detect \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{"message":"Find orders for CUST-1001"}'
+```
+
+Example response:
+
+```json
+{
+  "intent": "ORDER_SEARCH",
+  "source": "RULE",
+  "query": "Find orders for CUST-1001",
+  "confidence": 0.9,
+  "attachBusinessTools": true,
+  "useDocumentRetrieval": false,
+  "requiresClarification": false,
+  "clarificationQuestion": "",
+  "reason": "Matched order or sales keyword"
+}
+```
+
+### Routing behavior
+
+```text
+NORMAL_CHAT
+  -> no database tools attached
+
+CUSTOMER_SEARCH / ORDER_SEARCH / PRODUCT_SEARCH / CUSTOMER_SPEND
+  -> databaseBusinessTools attached
+
+DOCUMENT_QA
+  -> prepared route for future RAG integration
+
+UNKNOWN with clarification
+  -> chat returns clarification instead of forcing a bad tool call
+```
+
+### Config
+
+```yaml
+app:
+  ai:
+    intent-routing-enabled: ${APP_AI_INTENT_ROUTING_ENABLED:true}
+    intent-min-confidence: ${APP_AI_INTENT_MIN_CONFIDENCE:0.65}
+```
+
+Recommended local defaults:
+
+```text
+APP_AI_INTENT_ROUTING_ENABLED=true
+APP_AI_INTENT_MIN_CONFIDENCE=0.65
+```
+
+### Important design note
+
+The routing flow is hybrid:
+
+```text
+Fast obvious cases -> backend rule-based detector -> no extra AI classifier call
+Unclear cases -> AI structured-output classifier -> route decision
+Main answer -> streaming ChatClient call
+```
+
+This avoids making every request do two model calls. Normal technical questions and obvious business queries usually use only the main chat model call.
+
+### Current full chat flow
+
+```text
+React ChatPanel
+  -> POST /api/chat/stream with JWT
+  -> JwtAuthenticationFilter authenticates request
+  -> ChatController
+  -> ChatService
+  -> ChatHistoryService resolves conversation
+  -> ChatRoutePolicy creates route decision
+  -> ChatClient + MessageChatMemoryAdvisor
+  -> optional databaseBusinessTools only if route requires business tools
+  -> OpenRouter streams raw chunks
+  -> backend buffers chunks by sentence / 120 chars / 400ms
+  -> frontend receives NDJSON stream events
+  -> frontend typewriter queue displays smooth output
+  -> ChatHistoryService saves final visible message history
+```

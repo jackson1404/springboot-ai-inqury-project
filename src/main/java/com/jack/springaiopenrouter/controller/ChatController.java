@@ -28,7 +28,6 @@ public class ChatController {
         return chatService.chat(request, authentication.getName());
     }
 
-    // the return flux: backend will return many events over time, not one object
     @PostMapping(value = "/stream", produces = MediaType.APPLICATION_NDJSON_VALUE)
     public Flux<StreamChatEvent> streamChat(@Valid @RequestBody ChatRequest request, Authentication authentication) {
         return chatService.streamChat(request, authentication.getName());

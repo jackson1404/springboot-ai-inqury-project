@@ -49,6 +49,9 @@ app:
     # or this max wait time passes. These defaults reduce first-token delay and chunk gaps.
     stream-min-buffer-chars: ${APP_AI_STREAM_MIN_BUFFER_CHARS:120}
     stream-max-wait-millis: ${APP_AI_STREAM_MAX_WAIT_MILLIS:400}
+    # Intent routing first uses fast backend rules. If unclear, it uses Spring AI structured output.
+    intent-routing-enabled: ${APP_AI_INTENT_ROUTING_ENABLED:true}
+    intent-min-confidence: ${APP_AI_INTENT_MIN_CONFIDENCE:0.65}
   seed:
     enabled: ${APP_DB_SEED_ENABLED:true}
   security:

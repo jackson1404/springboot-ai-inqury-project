@@ -8,7 +8,9 @@ public record AppAiProperties(
         int maxMemoryMessages,
         int maxTitleLength,
         int streamMinBufferChars,
-        int streamMaxWaitMillis
+        int streamMaxWaitMillis,
+        boolean intentRoutingEnabled,
+        double intentMinConfidence
 ) {
     public AppAiProperties {
         if (maxHistoryTurns <= 0) {
@@ -25,6 +27,9 @@ public record AppAiProperties(
         }
         if (streamMaxWaitMillis <= 0) {
             streamMaxWaitMillis = 400;
+        }
+        if (intentMinConfidence <= 0.0 || intentMinConfidence > 1.0) {
+            intentMinConfidence = 0.65;
         }
     }
 }
