@@ -33,6 +33,7 @@ public class AiIntentDetectionService {
                     .call()
                     .content();
 
+            // This converts AI text into your Java record.
             IntentResult result = converter.convert(raw);
             if (result == null) {
                 return IntentResult.unknown(message, "AI classifier returned null structured output");
@@ -92,7 +93,7 @@ public class AiIntentDetectionService {
 
                 Required structured output format:
                 %s
-                """.formatted(message, converter.getFormat());
+                """.formatted(message, converter.getFormat()); // telling the model how to output the IntentResult structure
     }
 
     private IntentResult normalize(IntentResult result, String originalMessage) {
