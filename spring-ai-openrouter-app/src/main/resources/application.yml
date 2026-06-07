@@ -1,0 +1,88 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: spring-ai-openrouter-demo
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:spring_ai_demo}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:root}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: ${APP_DB_DDL_AUTO:update}
+    show-sql: ${APP_DB_SHOW_SQL:true}
+    properties:
+      hibernate:
+        format_sql: true
+
+  ai:
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: ${SPRING_AI_CHAT_MEMORY_SCHEMA:always}
+    mcp:
+      client:
+        enabled: ${APP_MCP_CLIENT_ENABLED:true}
+        name: spring-ai-openrouter-demo
+        version: 0.0.1
+        type: SYNC
+        request-timeout: ${APP_MCP_REQUEST_TIMEOUT:20s}
+        toolcallback:
+          enabled: true
+        stdio:
+          connections:
+            business-data:
+              command: ${MCP_DATA_SERVER_COMMAND:java}
+              args:
+                - "-jar"
+                - "${MCP_DATA_SERVER_JAR:business-data-mcp-server/target/business-data-mcp-server-0.0.1-SNAPSHOT.jar}"
+              env:
+                POSTGRES_HOST: ${POSTGRES_HOST:localhost}
+                POSTGRES_PORT: ${POSTGRES_PORT:5432}
+                POSTGRES_DB: ${POSTGRES_DB:spring_ai_demo}
+                POSTGRES_USER: ${POSTGRES_USER:postgres}
+                POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:root}
+                APP_DB_DDL_AUTO: ${APP_DB_DDL_AUTO:update}
+                APP_DB_SHOW_SQL: ${APP_DB_SHOW_SQL:false}
+                APP_DB_SEED_ENABLED: ${APP_DB_SEED_ENABLED:true}
+    openai:
+      api-key: ${OPENROUTER_API_KEY}
+      base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api}
+      chat:
+        options:
+          model: ${OPENROUTER_MODEL:openrouter/free}
+          temperature: ${AI_TEMPERATURE:0.2}
+          max-tokens: ${AI_MAX_TOKENS:900}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+app:
+  ai:
+    max-history-turns: ${APP_AI_MAX_HISTORY_TURNS:8}
+    max-memory-messages: ${APP_AI_MAX_MEMORY_MESSAGES:20}
+    max-title-length: ${APP_AI_MAX_TITLE_LENGTH:80}
+    # Streaming chunks are flushed when a sentence ends, this character threshold is reached,
+    # or this max wait time passes. These defaults reduce first-token delay and chunk gaps.
+    stream-min-buffer-chars: ${APP_AI_STREAM_MIN_BUFFER_CHARS:120}
+    stream-max-wait-millis: ${APP_AI_STREAM_MAX_WAIT_MILLIS:400}
+    # Intent routing first uses fast backend rules. If unclear, it uses Spring AI structured output.
+    intent-routing-enabled: ${APP_AI_INTENT_ROUTING_ENABLED:true}
+    intent-min-confidence: ${APP_AI_INTENT_MIN_CONFIDENCE:0.65}
+  seed:
+    enabled: ${APP_DB_SEED_ENABLED:true}
+  security:
+    jwt:
+      # Use a long random secret in production. Minimum 32 characters.
+      secret: ${JWT_SECRET:dev-only-change-this-secret-key-please-1234567890}
+      expiration-minutes: ${JWT_EXPIRATION_MINUTES:120}
+    cors:
+      allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}

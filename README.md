@@ -6,10 +6,28 @@ This project is a production-style learning project for:
 - Spring Security + JWT
 - PostgreSQL + Spring Data JPA
 - Spring AI + OpenRouter
+- Spring AI MCP client/server over STDIO
 - Spring AI `MessageChatMemoryAdvisor`
 - Spring AI JDBC chat memory repository
 - App-owned persistent chat history for the UI
 - React + Vite frontend
+
+## Module layout
+
+The backend is now a Maven multi-module project:
+
+```text
+business-data-core
+= Shared customer/order/product JPA entities, repositories, records, DataInquiryService, and business data seeding.
+
+business-data-mcp-server
+= Spring AI MCP STDIO server that exposes business data tools.
+
+spring-ai-openrouter-app
+= Web/chat/JWT backend, Spring AI chat client, MCP client, REST data API, and conversation history.
+```
+
+Chat no longer attaches local `@Tool` beans. Business-data routes attach Spring AI MCP tool callbacks discovered from the STDIO MCP server.
 
 ## What changed in this version
 
@@ -84,13 +102,20 @@ CORS_ALLOWED_ORIGINS=http://localhost:5173
 SPRING_AI_CHAT_MEMORY_SCHEMA=always
 APP_AI_MAX_MEMORY_MESSAGES=20
 APP_AI_MAX_TITLE_LENGTH=80
+APP_MCP_CLIENT_ENABLED=true
+APP_MCP_REQUEST_TIMEOUT=20s
+MCP_DATA_SERVER_COMMAND=java
+MCP_DATA_SERVER_JAR=business-data-mcp-server/target/business-data-mcp-server-0.0.1-SNAPSHOT.jar
 ```
 
 Run backend:
 
 ```bash
-mvn spring-boot:run
+mvn clean package
+mvn -pl spring-ai-openrouter-app spring-boot:run
 ```
+
+If your IDE runs `spring-ai-openrouter-app` with a different working directory, set `MCP_DATA_SERVER_JAR` to an absolute path.
 
 ## Frontend
 
@@ -147,7 +172,10 @@ AiChatConfig
 = Creates MessageWindowChatMemory using the JDBC ChatMemoryRepository.
 
 ChatService
-= Uses ChatClient + MessageChatMemoryAdvisor + DatabaseBusinessTools.
+= Uses ChatClient + MessageChatMemoryAdvisor + Spring AI MCP ToolCallbackProvider.
+
+BusinessDataMcpTools
+= Exposes search_customers, search_orders, search_products, and calculate_customer_total_spend as MCP tools.
 
 ChatHistoryService
 = Owns application conversation records and user ownership checks.
@@ -287,7 +315,7 @@ This improves maintainability because `ChatService` does orchestration, while ro
 ### New package
 
 ```text
-src/main/java/com/jack/springaiopenrouter/ai/intent/
+spring-ai-openrouter-app/src/main/java/com/jack/springaiopenrouter/ai/intent/
   ChatIntent.java
   IntentSource.java
   IntentResult.java
@@ -383,10 +411,17 @@ React ChatPanel
   -> ChatHistoryService resolves conversation
   -> ChatRoutePolicy creates route decision
   -> ChatClient + MessageChatMemoryAdvisor
-  -> optional databaseBusinessTools only if route requires business tools
+  -> optional MCP ToolCallbackProvider only if route requires business tools
+  -> Spring AI MCP client sends tool calls over STDIO
+  -> business-data-mcp-server handles MCP protocol and calls DataInquiryService
+  -> PostgreSQL returns customer/order/product data
   -> OpenRouter streams raw chunks
   -> backend buffers chunks by sentence / 120 chars / 400ms
   -> frontend receives NDJSON stream events
   -> frontend typewriter queue displays smooth output
   -> ChatHistoryService saves final visible message history
 ```
+
+## MCP transport migration note
+
+The first MCP transport is STDIO. To migrate the same tools to Streamable HTTP later, keep the tool names and return DTOs stable, replace the server starter with `spring-ai-starter-mcp-server-webmvc`, set `spring.ai.mcp.server.protocol=STREAMABLE`, and switch the app config from `spring.ai.mcp.client.stdio.connections.business-data` to `spring.ai.mcp.client.streamable-http.connections.business-data.url`.
