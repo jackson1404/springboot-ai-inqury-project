@@ -9,6 +9,8 @@ import com.jack.springaiopenrouter.model.ProductRecord;
 import com.jack.springaiopenrouter.repository.CustomerRepository;
 import com.jack.springaiopenrouter.repository.OrderRepository;
 import com.jack.springaiopenrouter.repository.ProductRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +20,8 @@ import java.util.List;
 @Service
 @Transactional(readOnly = true)
 public class DataInquiryService {
+
+    private static final Logger log = LoggerFactory.getLogger(DataInquiryService.class);
 
     private final CustomerRepository customerRepository;
     private final OrderRepository orderRepository;
@@ -34,21 +38,39 @@ public class DataInquiryService {
     }
 
     public List<CustomerRecord> searchCustomers(String query) {
-        return customerRepository.search(safeQuery(query)).stream()
+        String normalizedQuery = safeQuery(query);
+        log.info("Business data query started: operation=searchCustomers, query={}", safeForLog(normalizedQuery));
+
+        List<CustomerRecord> result = customerRepository.search(normalizedQuery).stream()
                 .map(this::toCustomerRecord)
                 .toList();
+
+        log.info("Business data query completed: operation=searchCustomers, resultCount={}", result.size());
+        return result;
     }
 
     public List<OrderRecord> searchOrders(String query) {
-        return orderRepository.search(safeQuery(query)).stream()
+        String normalizedQuery = safeQuery(query);
+        log.info("Business data query started: operation=searchOrders, query={}", safeForLog(normalizedQuery));
+
+        List<OrderRecord> result = orderRepository.search(normalizedQuery).stream()
                 .map(this::toOrderRecord)
                 .toList();
+
+        log.info("Business data query completed: operation=searchOrders, resultCount={}", result.size());
+        return result;
     }
 
     public List<ProductRecord> searchProducts(String query) {
-        return productRepository.search(safeQuery(query)).stream()
+        String normalizedQuery = safeQuery(query);
+        log.info("Business data query started: operation=searchProducts, query={}", safeForLog(normalizedQuery));
+
+        List<ProductRecord> result = productRepository.search(normalizedQuery).stream()
                 .map(this::toProductRecord)
                 .toList();
+
+        log.info("Business data query completed: operation=searchProducts, resultCount={}", result.size());
+        return result;
     }
 
     public List<CustomerRecord> allCustomers() {
@@ -70,13 +92,25 @@ public class DataInquiryService {
     }
 
     public List<OrderRecord> ordersByCustomerId(String customerId) {
-        return orderRepository.findByCustomerIdIgnoreCaseOrderByOrderDateDesc(safeQuery(customerId)).stream()
+        String normalizedCustomerId = safeQuery(customerId);
+        log.info("Business data query started: operation=ordersByCustomerId, customerId={}", safeForLog(normalizedCustomerId));
+
+        List<OrderRecord> result = orderRepository.findByCustomerIdIgnoreCaseOrderByOrderDateDesc(normalizedCustomerId).stream()
                 .map(this::toOrderRecord)
                 .toList();
+
+        log.info("Business data query completed: operation=ordersByCustomerId, resultCount={}", result.size());
+        return result;
     }
 
     public BigDecimal totalSpendByCustomerId(String customerId) {
-        return orderRepository.totalSpendByCustomerId(safeQuery(customerId));
+        String normalizedCustomerId = safeQuery(customerId);
+        log.info("Business data query started: operation=totalSpendByCustomerId, customerId={}", safeForLog(normalizedCustomerId));
+
+        BigDecimal totalSpend = orderRepository.totalSpendByCustomerId(normalizedCustomerId);
+
+        log.info("Business data query completed: operation=totalSpendByCustomerId, totalSpend={}", totalSpend);
+        return totalSpend;
     }
 
     public long orderCountByCustomerId(String customerId) {
@@ -85,6 +119,19 @@ public class DataInquiryService {
 
     private String safeQuery(String query) {
         return query == null ? "" : query.trim();
+    }
+
+    private String safeForLog(String value) {
+        if (value == null) {
+            return "<null>";
+        }
+
+        String normalized = value.replaceAll("[\r\n\t]", " ").trim();
+        if (normalized.length() <= 120) {
+            return normalized;
+        }
+
+        return normalized.substring(0, 120) + "...";
     }
 
     private CustomerRecord toCustomerRecord(CustomerEntity entity) {

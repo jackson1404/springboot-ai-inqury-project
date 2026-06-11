@@ -32,3 +32,14 @@ spring:
 app:
   seed:
     enabled: ${APP_DB_SEED_ENABLED:true}
+
+
+mcp:
+  server:
+    # MCP stdio protocol uses stdout/stdin, so server logs must go to a file, not console.
+    log-file: ${MCP_SERVER_LOG_FILE:target/business-data-mcp-server.log}
+
+logging:
+  level:
+    com.jack.springaiopenrouter: ${APP_LOG_LEVEL:INFO}
+    org.springframework.ai: ${SPRING_AI_LOG_LEVEL:INFO}

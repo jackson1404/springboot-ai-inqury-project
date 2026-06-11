@@ -7,6 +7,8 @@ import com.jack.springaiopenrouter.dto.ChatRequest;
 import com.jack.springaiopenrouter.dto.ChatResponse;
 import com.jack.springaiopenrouter.dto.StreamChatEvent;
 import com.jack.springaiopenrouter.entity.ChatConversationEntity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.ChatClient.ChatClientRequestSpec;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
@@ -22,6 +24,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 public class ChatService {
+
+    private static final Logger log = LoggerFactory.getLogger(ChatService.class);
 
     private final ChatClient chatClient;
     private final ChatHistoryService chatHistoryService;
@@ -57,6 +61,15 @@ public class ChatService {
 
         ChatRouteDecision routeDecision = chatRoutePolicy.decide(request.message());
 
+        log.info("Chat route decided: conversationId={}, intent={}, source={}, confidence={}, attachBusinessTools={}, useDocumentRetrieval={}, reason={}",
+                conversation.getId(),
+                routeDecision.intent(),
+                routeDecision.source(),
+                routeDecision.confidence(),
+                routeDecision.attachBusinessTools(),
+                routeDecision.useDocumentRetrieval(),
+                routeDecision.reason());
+
         if (routeDecision.requiresClarification() && !routeDecision.clarificationQuestion().isBlank()) {
             String clarification = routeDecision.clarificationQuestion();
             chatHistoryService.appendExchange(conversation, request.message(), clarification);
@@ -65,9 +78,20 @@ public class ChatService {
 
         ChatClientRequestSpec prompt = basePrompt(request, conversation, routeDecision);
 
-        String answer = routeDecision.attachBusinessTools()
-                ? prompt.toolCallbacks(mcpToolProvider).call().content()
-                : prompt.call().content();
+        String answer;
+
+        if (routeDecision.attachBusinessTools()) {
+            log.info("MCP client tools attached to AI request: conversationId={}, provider={}",
+                    conversation.getId(), mcpToolProvider.getClass().getName());
+            answer = prompt.toolCallbacks(mcpToolProvider).call().content();
+            log.info("AI response completed after MCP-enabled request: conversationId={}, answerLength={}",
+                    conversation.getId(), answer == null ? 0 : answer.length());
+        } else {
+            log.info("AI request sent without MCP tools: conversationId={}", conversation.getId());
+            answer = prompt.call().content();
+            log.info("AI response completed without MCP tools: conversationId={}, answerLength={}",
+                    conversation.getId(), answer == null ? 0 : answer.length());
+        }
 
         chatHistoryService.appendExchange(conversation, request.message(), answer);
         return new ChatResponse(conversation.getId(), answer, Instant.now());
@@ -82,6 +106,15 @@ public class ChatService {
 
         ChatRouteDecision routeDecision = chatRoutePolicy.decide(request.message());
         AtomicReference<StringBuilder> assistantAnswerRef = new AtomicReference<>(new StringBuilder());
+
+        log.info("Streaming chat route decided: conversationId={}, intent={}, source={}, confidence={}, attachBusinessTools={}, useDocumentRetrieval={}, reason={}",
+                conversation.getId(),
+                routeDecision.intent(),
+                routeDecision.source(),
+                routeDecision.confidence(),
+                routeDecision.attachBusinessTools(),
+                routeDecision.useDocumentRetrieval(),
+                routeDecision.reason());
 
         Flux<StreamChatEvent> startEvent = Flux.just(StreamChatEvent.conversation(conversation.getId()));
 
@@ -103,24 +136,38 @@ public class ChatService {
 
         ChatClientRequestSpec prompt = basePrompt(request, conversation, routeDecision);
 
-        Flux<String> rawChunks = routeDecision.attachBusinessTools()
-                ? prompt.toolCallbacks(mcpToolProvider).stream().content()
-                : prompt.stream().content();
+        Flux<String> rawChunks;
+
+        if (routeDecision.attachBusinessTools()) {
+            log.info("MCP client tools attached to streaming AI request: conversationId={}, provider={}",
+                    conversation.getId(), mcpToolProvider.getClass().getName());
+            rawChunks = prompt.toolCallbacks(mcpToolProvider).stream().content();
+        } else {
+            log.info("Streaming AI request sent without MCP tools: conversationId={}", conversation.getId());
+            rawChunks = prompt.stream().content();
+        }
 
         Flux<StreamChatEvent> tokenEvents = bufferTextChunks(rawChunks)
                 .map(chunk -> {
                     assistantAnswerRef.get().append(chunk);
                     return StreamChatEvent.token(conversation.getId(), chunk);
                 })
-                .onErrorResume(error -> Flux.just(
-                        StreamChatEvent.error(conversation.getId(), cleanErrorMessage(error))
-                ));
+                .onErrorResume(error -> {
+                    log.error("Streaming AI request failed: conversationId={}, attachBusinessTools={}, error={}",
+                            conversation.getId(), routeDecision.attachBusinessTools(), error.getMessage(), error);
+                    return Flux.just(StreamChatEvent.error(conversation.getId(), cleanErrorMessage(error)));
+                });
 
         Flux<StreamChatEvent> doneEvent = Flux.defer(() -> {
             String finalAnswer = assistantAnswerRef.get().toString();
 
             if (!finalAnswer.isBlank()) {
                 chatHistoryService.appendExchange(conversation, request.message(), finalAnswer);
+                log.info("Streaming AI response completed: conversationId={}, attachBusinessTools={}, answerLength={}",
+                        conversation.getId(), routeDecision.attachBusinessTools(), finalAnswer.length());
+            } else {
+                log.warn("Streaming AI response completed with blank answer: conversationId={}, attachBusinessTools={}",
+                        conversation.getId(), routeDecision.attachBusinessTools());
             }
 
             return Flux.just(StreamChatEvent.done(conversation.getId()));
