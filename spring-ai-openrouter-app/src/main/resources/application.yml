@@ -34,23 +34,11 @@ spring:
         request-timeout: ${APP_MCP_REQUEST_TIMEOUT:20s}
         toolcallback:
           enabled: true
-        stdio:
+        streamable-http:
           connections:
             business-data:
-              command: ${MCP_DATA_SERVER_COMMAND:java}
-              args:
-                - "-jar"
-                - "${MCP_DATA_SERVER_JAR:business-data-mcp-server/target/business-data-mcp-server-0.0.1-SNAPSHOT.jar}"
-              env:
-                POSTGRES_HOST: ${POSTGRES_HOST:localhost}
-                POSTGRES_PORT: ${POSTGRES_PORT:5432}
-                POSTGRES_DB: ${POSTGRES_DB:spring_ai_demo}
-                POSTGRES_USER: ${POSTGRES_USER:postgres}
-                POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:root}
-                APP_DB_DDL_AUTO: ${APP_DB_DDL_AUTO:update}
-                APP_DB_SHOW_SQL: ${APP_DB_SHOW_SQL:false}
-                APP_DB_SEED_ENABLED: ${APP_DB_SEED_ENABLED:true}
-                MCP_SERVER_LOG_FILE: ${MCP_SERVER_LOG_FILE:target/business-data-mcp-server.log}
+              url: ${MCP_DATA_SERVER_URL:http://localhost:8082}
+              endpoint: ${MCP_DATA_SERVER_ENDPOINT:/mcp}
     openai:
       api-key: ${OPENROUTER_API_KEY}
       base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api}

@@ -1,9 +1,11 @@
+server:
+  port: ${MCP_DATA_SERVER_PORT:8082}
+
 spring:
   application:
     name: business-data-mcp-server
   main:
     banner-mode: off
-    web-application-type: none
 
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:spring_ai_demo}
@@ -22,21 +24,24 @@ spring:
   ai:
     mcp:
       server:
+        enabled: true
         name: business-data-mcp-server
         version: 0.0.1
-        stdio: true
+        protocol: STREAMABLE
         type: SYNC
         annotation-scanner:
           enabled: true
+        streamable-http:
+          mcp-endpoint: ${MCP_DATA_SERVER_ENDPOINT:/mcp}
 
 app:
   seed:
     enabled: ${APP_DB_SEED_ENABLED:true}
 
-
 mcp:
   server:
-    # MCP stdio protocol uses stdout/stdin, so server logs must go to a file, not console.
+    # In Streamable HTTP mode, stdout is no longer used for the MCP protocol,
+    # so console logging is safe. Keep the file log for easier debugging.
     log-file: ${MCP_SERVER_LOG_FILE:target/business-data-mcp-server.log}
 
 logging:
