@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springaicommunity.mcp.annotation.McpTool;
 import org.springaicommunity.mcp.annotation.McpToolParam;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -23,6 +24,7 @@ public class BusinessDataMcpTools {
         this.dataInquiryService = dataInquiryService;
     }
 
+    @PreAuthorize("hasAuthority('SCOPE_mcp:customers:read')")
     @McpTool(
             name = "search_customers",
             description = """
@@ -50,6 +52,7 @@ public class BusinessDataMcpTools {
         }
     }
 
+    @PreAuthorize("hasAuthority('SCOPE_mcp:orders:read')")
     @McpTool(
             name = "search_orders",
             description = "Search orders from the PostgreSQL database by order id, customer id, product code, or order status."
@@ -73,6 +76,7 @@ public class BusinessDataMcpTools {
         }
     }
 
+    @PreAuthorize("hasAuthority('SCOPE_mcp:products:read')")
     @McpTool(
             name = "search_products",
             description = "Search products from the PostgreSQL database by product code, name, or category."
@@ -96,6 +100,7 @@ public class BusinessDataMcpTools {
         }
     }
 
+    @PreAuthorize("hasAuthority('SCOPE_mcp:spend:read')")
     @McpTool(
             name = "calculate_customer_total_spend",
             description = "Calculate total amount spent by a customer using PostgreSQL order data. Input must be a customer id like CUST-1001."

@@ -34,6 +34,11 @@ spring:
         streamable-http:
           mcp-endpoint: ${MCP_DATA_SERVER_ENDPOINT:/mcp}
 
+  securiy:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${MCP_AUTH_ISSUER_URI:http://localhost:9000}
 app:
   seed:
     enabled: ${APP_DB_SEED_ENABLED:true}
@@ -48,3 +53,4 @@ logging:
   level:
     com.jack.springaiopenrouter: ${APP_LOG_LEVEL:INFO}
     org.springframework.ai: ${SPRING_AI_LOG_LEVEL:INFO}
+    org.springframework.security: ${SPRING_SECURITY_LOG_LEVEL:INFO}

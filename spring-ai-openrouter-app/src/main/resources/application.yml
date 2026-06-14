@@ -34,6 +34,7 @@ spring:
         request-timeout: ${APP_MCP_REQUEST_TIMEOUT:20s}
         toolcallback:
           enabled: true
+        initialized: false
         streamable-http:
           connections:
             business-data:
@@ -47,6 +48,24 @@ spring:
           model: ${OPENROUTER_MODEL:openrouter/free}
           temperature: ${AI_TEMPERATURE:0.2}
           max-tokens: ${AI_MAX_TOKENS:900}
+
+  security:
+    oauth2:
+      client:
+        registration:
+          mcp-business-data:
+            provider: mcp-auth-server
+            client-id: ${MCP_CLIENT_ID:spring-ai-openrouter-app}
+            client-secret: ${MCP_CLIENT_SECRET:dev-secret-change-me}
+            authorization-grant-type: client_credentials
+            scope:
+              - mcp:customers:read
+              - mcp:orders:read
+              - mcp:products:read
+              - mcp:spend:read
+        provider:
+          mcp-auth-server:
+            issuer-uri: ${MCP_AUTH_ISSUER_URI:http://localhost:9000}
 
 management:
   endpoints:
